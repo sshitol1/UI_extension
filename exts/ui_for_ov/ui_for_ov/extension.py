@@ -162,6 +162,8 @@ class MyExtension(omni.ext.IExt):
                 # Define options for ComboBoxes
         self.air_supply_options = [str(x) for x in range(15, 33)]
         self.tcs_liquid_options = [str(x) for x in range(17, 46)]
+        self.fws_air_options = [str(x) for x in range(5,46)]
+        self.fws_liquid_options = [str(x) for x in range(5,46)]
         self.current_cdu_type = self.cdu_options[0]
 
 
@@ -325,13 +327,13 @@ class MyExtension(omni.ext.IExt):
                                 # Container for fws_air_menu ComboBox
                                 with ui.HStack(height=30) as self.fws_air_container:
                                     ui.Label("FWS Design Temp (Air):", width=210, style=self.STYLES["label"])
-                                    self.fws_air_menu = ui.ComboBox(0, *[str(x) for x in range(5, 41)], style = self.STYLES["combo_box"])  # Initial values
+                                    self.fws_air_menu = ui.ComboBox(0, *self.fws_air_options, style = self.STYLES["combo_box"])  # Initial values
                                     ui.Label("°C", width=30)
 
                                 # Container for fws_liquid_menu ComboBox
                                 with ui.HStack(height=30) as self.fws_liquid_container:
                                     ui.Label("FWS Design Temp (Liquid):", width=150, style=self.STYLES["label"])
-                                    self.fws_liquid_menu = ui.ComboBox(0, *[str(x) for x in range(5, 41)], style = self.STYLES["combo_box"])  # Initial values
+                                    self.fws_liquid_menu = ui.ComboBox(0, *self.fws_liquid_options, style = self.STYLES["combo_box"])  # Initial values
                                     ui.Label("°C", width=30)
 
                                 with ui.HStack(height=30):
@@ -377,12 +379,6 @@ class MyExtension(omni.ext.IExt):
                                     # CRAH Labels
                                 self.crah_labels = []
                                 self.crah_label_vertiv_pw170 = ui.Label("Number of CRAHs for Vertiv PW170: Calculating...", style=self.STYLES["highlight_label"])
-                                # for data in self.vendor_data:
-                                #     crah_label = ui.Label(f"Number of CRAHs for {data['CDU Model']}: Calculating...", style=self.STYLES["highlight_label"])
-                                #     self.crah_labels.append(crah_label)
-
-                            # Call update method to calculate CRAH values
-                                # self.update_crah_counts()
 
                         # Footer
                         ui.Label(
@@ -400,9 +396,7 @@ class MyExtension(omni.ext.IExt):
                         self.liquid_cooling_menu.model.get_item_value_model().add_value_changed_fn(
                             lambda model: self.update_air_supply_temperature_range()
                         )
-                        self.fws_liquid_menu.model.get_item_value_model().add_value_changed_fn(
-                            lambda model: self.update_liquid_cooling_options()
-                        )
+
                         self.fws_air_menu.model.get_item_value_model().add_value_changed_fn(lambda model: self.calculate_chilled_water_flow_rate_per_pod())
                         self.fws_air_menu.model.get_item_value_model().add_value_changed_fn(lambda model: self.calculate_chilled_water_flow_rate_per_crah())
 
@@ -412,13 +406,7 @@ class MyExtension(omni.ext.IExt):
                             lambda model: self.update_fws_design_temperature_liquid(int(self.tcs_liquid_options[model.as_int]))
                         )
 
-
-
-
-                        # self.air_supply_menu.model.get_item_value_model().add_value_changed_fn(
-                        #     lambda model: self.update_fws_design_temperature_air(int(model.get_value_as_string()))
-                        # )
-                        self.air_supply_menu.model.get_item_value_model().add_value_changed_fn(lambda model: self.update_fws_design_temperature_air())
+                        self.air_supply_menu.model.get_item_value_model().add_value_changed_fn(lambda model: self.update_fws_design_temperature_air(int(self.tcs_liquid_options[model.as_int])))
                         self.pod_menu.model.get_item_value_model().add_value_changed_fn(lambda model: self.calculate_total_power())
                         self.num_pods_field.model.add_value_changed_fn(lambda model: self.calculate_total_power())
 
@@ -430,8 +418,6 @@ class MyExtension(omni.ext.IExt):
                         self.tcs_liquid_menu.model.get_item_value_model().add_value_changed_fn(lambda model: self.update_calculations())
 
                                 # Attach event listeners
-                        # self.air_supply_menu.model.get_item_value_model().add_value_changed_fn(lambda model: self.update_flow_rates())
-                        # self.pod_menu.model.get_item_value_model().add_value_changed_fn(lambda model: self.update_flow_rates())
 
                         self.fws_liquid_menu.model.get_item_value_model().add_value_changed_fn(lambda model: self.update_flow_rates())
                         self.fws_liquid_menu.model.get_item_value_model().add_value_changed_fn(lambda model: self.calculate_chilled_water_temperature_rise())
@@ -439,17 +425,12 @@ class MyExtension(omni.ext.IExt):
                         self.fws_air_menu.model.get_item_value_model().add_value_changed_fn(lambda model: self.calculate_chilled_water_flow_rate_per_crah())
                         self.fws_air_menu.model.get_item_value_model().add_value_changed_fn(lambda model: self.calculate_chilled_water_flow_rate_per_pod())
                         self.fws_air_menu.model.get_item_value_model().add_value_changed_fn(lambda model: self.update_calculations())
-                        # self.air_supply_menu.model.get_item_value_model().add_value_changed_fn(lambda model: self.update_flow_rates())
-                        self.tcs_liquid_menu.model.get_item_value_model().add_value_changed_fn(lambda model: self.update_flow_rates())
-                        # self.pod_menu.model.get_item_value_model().add_value_changed_fn(lambda model: self.update_flow_rates())
 
-                        self.air_supply_menu.model.get_item_value_model().add_value_changed_fn(lambda model: self.on_airflow_rate_update())
-                        self.pod_menu.model.get_item_value_model().add_value_changed_fn(lambda model: self.on_airflow_rate_update())
-                        self.num_pods_field.model.add_value_changed_fn(lambda model: self.on_airflow_rate_update())
+                        self.tcs_liquid_menu.model.get_item_value_model().add_value_changed_fn(lambda model: self.update_flow_rates())
+
+                        self.air_supply_menu.model.get_item_value_model().add_value_changed_fn(lambda model: self.update_calculations())
                         self.num_pods_field.model.add_value_changed_fn(lambda model: self.update_calculations())
 
-                                        # Initial calculation
-                        self.on_airflow_rate_update()
                         self.cdu_menu.model.get_item_value_model().add_value_changed_fn(self.on_cdu_type_selected)
 
                         # Initial update
@@ -501,7 +482,7 @@ class MyExtension(omni.ext.IExt):
                 self.air_supply_menu = ui.ComboBox(0, "Select", *self.air_supply_options)
 
             # Attach recalculation handler
-            self.air_supply_menu.model.get_item_value_model().add_value_changed_fn(lambda model: self.on_airflow_rate_update())
+            self.air_supply_menu.model.get_item_value_model().add_value_changed_fn(lambda model: self.update_calculations())
 
             print(f"Updated Air Supply Temperature range to: {final_range_formatted}")
 
@@ -513,8 +494,6 @@ class MyExtension(omni.ext.IExt):
         try:
             selected_index = model.as_int
             self.current_cdu_type = self.cdu_options[selected_index]  # Update cdu_type with selected value
-            print(f"Selected CDU Type: {self.cdu_type}")
-            # self.cdu_type_label.text = f"Selected CDU Type: {self.cdu_type}"
             self.update_calculations()  # Trigger recalculations if necessary
         except Exception as e:
             print(f"Error selecting CDU Type: {str(e)}")
@@ -543,9 +522,8 @@ class MyExtension(omni.ext.IExt):
             self._clear_labels()
 
 
-    def update_liquid_cooling_options(self):
+    def update_liquid_cooling_options(self,fws_liquid_temp):
         try:
-            fws_temp = float(self.fws_liquid_menu.model.get_item_value_model().get_value_as_string())
             selected_city = self.unique_cities[self.city_menu.model.get_item_value_model().as_int]
             city_data = self.climate_data[self.climate_data['City'] == selected_city]
 
@@ -553,12 +531,12 @@ class MyExtension(omni.ext.IExt):
                 dry_bulb = float(city_data['Dry Bulb'].iloc[0])
                 wet_bulb = float(city_data['Wet Bulb'].iloc[0])
 
-                if fws_temp - 5 - dry_bulb >= 0:
+                if fws_liquid_temp - 5 - dry_bulb >= 0:
                     self.liquid_cooling_label1.text = "Liquid Cooling Option 1: Dry Cooler"
                 else:
                     self.liquid_cooling_label1.text = "Liquid Cooling Option 1: Chiller"
 
-                if fws_temp - 3 - wet_bulb >= 0:
+                if fws_liquid_temp - 3 - wet_bulb >= 0:
                     self.liquid_cooling_label2.text = "Liquid Cooling Option 2: Closed Loop Cooling Tower"
                 else:
                     self.liquid_cooling_label2.text = "Liquid Cooling Option 2: Chiller"
@@ -578,12 +556,11 @@ class MyExtension(omni.ext.IExt):
 
 
     def update_fws_design_temperature_liquid(self, tcs_liquid_value):
-        print(f"Selected TCS Liquid Value: {tcs_liquid_value}")  # Debugging statement to confirm selected value
 
         # Calculate the maximum temperature based on TCS Liquid
         max_temp = max(5, tcs_liquid_value - 4)
         liquid_temp_range = list(range(5, max_temp + 1))
-        print(f"Liquid Temp Range Calculated: {liquid_temp_range}")  # Debugging statement
+          # Debugging statement
 
         # Update ComboBox with new items
         self.fws_liquid_container.clear()
@@ -591,6 +568,10 @@ class MyExtension(omni.ext.IExt):
             ui.Label("FWS Design Temp (Liquid):", width=150, style=self.STYLES["label"])
             self.fws_liquid_menu = ui.ComboBox(0, *[str(temp) for temp in liquid_temp_range])  # Populate with calculated range
             ui.Label("°C", width=30)
+
+        self.fws_liquid_menu.model.get_item_value_model().add_value_changed_fn(
+                lambda model: self.update_liquid_cooling_options(int(self.fws_liquid_options[model.as_int]))
+                        )
 
 
     def calculate_cdus(self, liquid_cooling_capacity, required_liquid_flow_rate_per_pod):
@@ -603,32 +584,25 @@ class MyExtension(omni.ext.IExt):
         try:
             # Nominal cooling capacity for XDU1350
             xdu1350_capacity = self.NOMINAL_COOLING_CAPACITIES["XDU1350"]
-            print("Liquid cooling capacity, XDU capacity, Liquid flow rate per pod, Secondary flow rate cdu", liquid_cooling_capacity, xdu1350_capacity, required_liquid_flow_rate_per_pod, self.MAX_SECONDARY_FLOW_RATE_CDU)
 
             # Calculate number of CDUs based on cooling capacity and flow rate
             cdus_by_cooling_capacity = math.ceil(liquid_cooling_capacity / xdu1350_capacity)
             cdus_by_flow_rate = math.ceil(required_liquid_flow_rate_per_pod / self.MAX_SECONDARY_FLOW_RATE_CDU)
-            print("Cdu by cooling capacity, CDU by flow rate:", cdus_by_cooling_capacity, cdus_by_flow_rate)
+
             # Final CDU count
             total_cdus = max(cdus_by_cooling_capacity, cdus_by_flow_rate) + 1
-            print(f"Calculated Number of CDUs: {total_cdus}")
             return total_cdus
         except Exception as e:
             print(f"Error calculating CDUs: {e}")
             return None
 
 
-    def update_fws_design_temperature_air(self):
+    def update_fws_design_temperature_air(self,air_supply_temp):
         try:
-            # Get the selected Air Supply Temperature
-            air_supply_index = self.air_supply_menu.model.get_item_value_model().as_int
-            air_supply_temp = int(self.air_supply_options[air_supply_index])
-            print(f"Selected Air Supply Temperature for FWS Design Update: {air_supply_temp}")  # Debugging statement
 
             # Calculate the FWS Design Temperature Air range
             max_temp = max(5, air_supply_temp - 12)
             air_temp_range = list(range(5, max_temp + 1))
-            print(f"FWS Design Temperature Air Range Calculated: {air_temp_range}")  # Debugging statement
 
             # Clear the existing ComboBox and recreate it with the new range
             self.fws_air_container.clear()
@@ -639,6 +613,9 @@ class MyExtension(omni.ext.IExt):
                 ui.Label("°C", width=30)
 
             # Attach an event listener to update `fws_design_temperature_air` when selection changes
+            self.fws_air_menu.model.get_item_value_model().add_value_changed_fn(
+                lambda model: self.calculate_chilled_water_temperature_rise(int(self.fws_air_options[model.as_int]))
+                        )
             self.fws_air_menu.model.get_item_value_model().add_value_changed_fn(self.update_fws_design_temperature_air_value)
             self.fws_air_menu.model.get_item_value_model().add_value_changed_fn(self.calculate_chilled_water_temperature_rise)
             self.fws_air_menu.model.get_item_value_model().add_value_changed_fn(lambda model: self.update_calculations())
@@ -666,7 +643,7 @@ class MyExtension(omni.ext.IExt):
             if 0 <= selected_index < len(children):
                 selected_item_model = self.fws_air_menu.model.get_item_value_model(children[selected_index])
                 self.fws_design_temperature_air = int(selected_item_model.get_value_as_string())
-                print("Selected FWS Design Temperature Air:", self.fws_design_temperature_air)
+
             else:
                 print("Selected index is out of range")
 
@@ -679,19 +656,16 @@ class MyExtension(omni.ext.IExt):
     def calculate_liquid_cooling_capacity(self, rack_type):
         # Calculate liquid cooling capacity as the difference between power per rack and air cooling per rack
         liquid_cooling_capacity = self.POWER_PER_RACK[rack_type] - self.AIR_COOLING_CAPACITY_PER_RACK[rack_type]
-        print(f"Liquid cooling capacity for {rack_type}: {liquid_cooling_capacity} kW")
         return liquid_cooling_capacity
 
     def calculate_total_air_cooling_capacity(self, pod_type):
         rack_counts = self.POD_RACK_COUNTS.get(pod_type, {})
         total_air_cooling = sum(self.AIR_COOLING_CAPACITY_PER_RACK[rack] * count for rack, count in rack_counts.items())
-        print(f"Total air cooling capacity for {pod_type}: {total_air_cooling} kW")
         return total_air_cooling
 
     def calculate_total_liquid_cooling_capacity(self, pod_type):
         rack_counts = self.POD_RACK_COUNTS.get(pod_type, {})
         liquid_cooling_capacity = sum(self.calculate_liquid_cooling_capacity(rack) * count for rack, count in rack_counts.items())
-        print(f"Total liquid cooling capacity for {pod_type}: {liquid_cooling_capacity} kW")
         return liquid_cooling_capacity
 
     def calculate_power_per_pod(self, pod_type):
@@ -700,7 +674,6 @@ class MyExtension(omni.ext.IExt):
 
         # Calculate the total power for this pod type
         total_power = sum(self.POWER_PER_RACK[rack] * count for rack, count in rack_counts.items())
-        print(f"Total power for {pod_type}: {total_power} kW")
         return total_power
 
     def calculate_rack_power_liquid_cooled(self, tcs_liquid_value):
@@ -710,7 +683,6 @@ class MyExtension(omni.ext.IExt):
     # """
         try:
             rack_power_liquid_cooled = (44025 / (56.6 - tcs_liquid_value)) ** 0.576
-            print(f"Rack Power _Liquid Cooled (kW): {rack_power_liquid_cooled:.2f}")
             return rack_power_liquid_cooled
         except ZeroDivisionError:
             print("Error: TCS Liquid temperature is too close to 56.6, causing division by zero.")
@@ -731,7 +703,6 @@ class MyExtension(omni.ext.IExt):
 
             temp_increase = (rack_power_liquid_cooled / (liquid_flow_rate_per_rack / 60000)) / self.RHO_C_SECONDARY_FLOW
             secondary_return_temp = temp_increase + tcs_liquid_value
-            print(f"Secondary Return Temp (°C) LC: {secondary_return_temp:.2f}")
             return secondary_return_temp
         except Exception as e:
             print(f"Error calculating Secondary Return Temp (°C) LC: {e}")
@@ -776,7 +747,6 @@ class MyExtension(omni.ext.IExt):
 
             # Calculate total power based on the number of pods
             total_power = power_per_pod * num_pods
-            print(f"Calculated total power for {num_pods} pods of {selected_pod_type}: {total_power} kW")
 
             # Display the total power in the UI
             self.total_power_label.text = f"Total Power: {total_power} kW"
@@ -795,7 +765,6 @@ class MyExtension(omni.ext.IExt):
             13
         )
 
-        print(f"Calculated air flow rate per kW for {air_supply_temp}°C: {cfm_per_kw} CFM")
         return cfm_per_kw
 
     # Function to calculate required air flow rate per rack (CFM)
@@ -808,7 +777,6 @@ class MyExtension(omni.ext.IExt):
 
         # Calculate air flow rate per rack
         air_flow_rate_per_rack = air_flow_rate_per_kw * (air_cooling_capacity_per_rack / 1)  # in kW/rack
-        print(f"Calculated air flow rate per rack: {air_flow_rate_per_rack} CFM")
         return air_flow_rate_per_rack
 
     # Function to calculate required liquid flow rate per rack
@@ -819,7 +787,6 @@ class MyExtension(omni.ext.IExt):
             6.18222 * (tcs_liquid_temp ** 2) +
             145.2726 * tcs_liquid_temp -
             1205.82)
-        print(f"Calculated liquid flow rate per rack for TCS Liquid {tcs_liquid_temp}°C: {liquid_flow_rate_per_rack}")
         return liquid_flow_rate_per_rack
 
     def update_flow_rates(self):
@@ -853,20 +820,16 @@ class MyExtension(omni.ext.IExt):
     def update_calculations(self):
         """Main method to perform all calculations and update UI."""
         try:
-            print("inside                            iiii")
-            current_cdu_type = self.cdu_options[self.cdu_menu.model.get_item_value_model().as_int]
-            print(current_cdu_type)
-            num_pods = int(self.num_pods_field.model.get_value_as_string())
-            print(num_pods)
 
-            # Get values (replace these placeholders with actual calculations or retrieved values)
-            air_supply_index = self.air_supply_menu.model.get_item_value_model().as_int
-            air_supply_temp_str = self.air_supply_options[air_supply_index]
-            air_supply_temp = int(air_supply_temp_str.replace("°C", "").strip())
+            current_cdu_type = self.cdu_options[self.cdu_menu.model.get_item_value_model().as_int]
+            num_pods = int(self.num_pods_field.model.get_value_as_string())
+            air_supply_temperature = self.get_selected_air_supply_temperature() # Fetch the selected air supply temperature
+
             selected_pod_type = self.pod_options[self.pod_menu.model.get_item_value_model().as_int]
             air_cooling_capacity_per_pod = self.calculate_total_air_cooling_capacity(selected_pod_type)
-            required_air_flow_rate_capacity_per_pod = self.calculate_airflow_rate_per_pod(air_supply_temp)
-            air_supply_temperature = self.get_selected_air_supply_temperature()  # Fetch the selected air supply temperature
+            required_air_flow_rate_capacity_per_pod = self.calculate_airflow_rate_per_pod(air_supply_temperature)
+
+            fws_air_temperature = self.get_selected_fws_design_air_temperature()
 
             # Calculate air temperature rise in rack
             air_temperature_rise_in_rack = self.calculate_air_temperature_rise_in_rack(air_cooling_capacity_per_pod, required_air_flow_rate_capacity_per_pod)
@@ -875,6 +838,8 @@ class MyExtension(omni.ext.IExt):
             # Calculate air return temperature
             air_return_temperature = self.calculate_air_return_temperature(air_supply_temperature, air_temperature_rise_in_rack)
             self.air_return_temperature_label.text = f"Air Return Temperature: {air_return_temperature:.2f} °C"
+
+            self.required_airflow_rate_label.text = f"Required Air Flow Rate per Pod (CFM): {required_air_flow_rate_capacity_per_pod:.2f}" if required_air_flow_rate_capacity_per_pod else "Calculation error"
 
             # Calculate number of CRAHs
             no_of_crahs = self.calculate_no_of_crahs(air_cooling_capacity_per_pod)
@@ -887,7 +852,7 @@ class MyExtension(omni.ext.IExt):
             q_per_crah = self.calculate_q_per_crah(current_cdu_type, air_cooling_capacity_per_pod, total_power_per_pod, no_of_crahs)
             self.q_per_crah_label.text = f"Q per CRAH: {q_per_crah:.2f} kW"
 
-            chilled_water_temperature_rise = self.calculate_chilled_water_temperature_rise(model= self.fws_air_menu)
+            chilled_water_temperature_rise = self.calculate_chilled_water_temperature_rise(fws_air_temperature)
 
             # Calculate chilled water flow rate per CRAH
             chilled_water_flow_rate_crah = self.calculate_chilled_water_flow_rate_per_crah(q_per_crah, chilled_water_temperature_rise)
@@ -899,31 +864,9 @@ class MyExtension(omni.ext.IExt):
 
             q_ac_per_pod = self.calculate_q_ac_per_pod(current_cdu_type, air_cooling_capacity_per_pod, total_power_per_pod, num_pods)
             self.q_ac_per_pod_label.text = f"Q AC per POD (kW): {q_ac_per_pod:.2f}"
-            print(q_ac_per_pod)
         except Exception as e:
             print(f"Error in update_calculations: {e}")
 
-
-    def on_airflow_rate_update(self):
-        """Event handler to calculate and display the airflow rate per pod based on the selected temperature."""
-        try:
-            # Get the selected air supply temperature index
-            air_supply_index = self.air_supply_menu.model.get_item_value_model().as_int
-
-            # Validate the index to prevent out-of-range errors
-            if air_supply_index < 0 or air_supply_index >= len(self.air_supply_options):
-                print("Invalid air supply temperature selection. No update performed.")
-                return  # Early return if index is invalid
-
-            # Retrieve and parse the selected temperature, removing the "°C" suffix
-            air_supply_temp_str = self.air_supply_options[air_supply_index]
-            air_supply_temp = int(air_supply_temp_str.replace("°C", "").strip())
-
-            required_airflow_rate_per_pod = self.calculate_airflow_rate_per_pod(air_supply_temp)
-            self.required_airflow_rate_label.text = f"Required Air Flow Rate per Pod (CFM): {required_airflow_rate_per_pod:.2f}" if required_airflow_rate_per_pod else "Calculation error"
-
-        except Exception as e:
-            print(f"Error in airflow rate update handler: {str(e)}")
 
     def calculate_air_return_temperature(self, air_supply_temperature, air_temperature_rise_in_rack):
         """Calculate the air return temperature."""
@@ -977,9 +920,9 @@ class MyExtension(omni.ext.IExt):
 
         # Primary flow rate per CDU and per Pod
         q_per_cdu = self.calculate_q_per_cdu(self.calculate_total_liquid_cooling_capacity(self.get_selected_pod_info()[0]), total_cdus)
-        print("Q_CDU                                                     ", q_per_cdu)
+
         primary_flow_rate_per_cdu = self.calculate_primary_flow_rate_per_cdu(q_per_cdu)
-        print("Primary flow rate" , primary_flow_rate_per_cdu)
+
         self.primary_flow_rate_per_cdu_label.text = f"Primary Flow Rate per CDU (LPM): {primary_flow_rate_per_cdu:.2f}"
 
         primary_flow_rate_per_pod = self.calculate_primary_flow_rate_per_pod(primary_flow_rate_per_cdu, total_cdus)
@@ -997,6 +940,13 @@ class MyExtension(omni.ext.IExt):
         tcs_liquid_index = self.tcs_liquid_menu.model.get_item_value_model().as_int
         return int(self.tcs_liquid_options[tcs_liquid_index])
 
+    def get_selected_fws_design_air_temperature(self):
+        fws_air_index = self.fws_air_menu.model.get_item_value_model().as_int
+        return int(self.fws_air_options[fws_air_index])
+
+    def get_selected_fws_design_liquid_temperature(self):
+        fws_liquid_index = self.fws_air_menu.model.get_item_value_model().as_int
+        return int(self.fws_air_options[fws_liquid_index])
     def get_selected_pod_info(self):
         """Retrieve selected pod type and rack counts for the selected pod configuration."""
         selected_pod_type = self.pod_options[self.pod_menu.model.get_item_value_model().as_int]
@@ -1008,7 +958,6 @@ class MyExtension(omni.ext.IExt):
         try:
             # Calculate POD flow rate per CDU
             POD_flowrate_CDU = required_liquid_flow_rate_per_pod / total_cdus
-            print(f"POD Flowrate per CDU: {POD_flowrate_CDU} LPM")
 
             # Update the UI label with calculated POD Flow Rate per CDU
             self.pod_flowrate_cdu_label.text = f"POD Flow Rate per CDU: {POD_flowrate_CDU:.2f} LPM"
@@ -1025,17 +974,12 @@ class MyExtension(omni.ext.IExt):
 
                                 # Calculate roots of the quadratic equation
                 root1, root2 = self.calculate_roots(qes_a, qes_b, qes_c)
-                print(f"QSC Coefficients for {selected_pod_type} with {total_cdus} CDUs: a={qsc_a}, b={qsc_b}, c={qsc_c}")
-                print(f"QES Coefficients: a={qes_a}, b={qes_b}, c={qes_c}")
-
                                 # Calculate flowrate1 as the maximum of root1 and root2
                 flowrate1 = max(root1, root2)
-                print(f"Selected Flowrate1 (max root): {flowrate1}")
 
                                 # Calculate dp1 and dp2
                 dp1 = self.calculate_dp(qsc_coefficients, flowrate1)
                 dp2 = self.calculate_dp(qsc_coefficients, POD_flowrate_CDU)
-                print(f"Calculated dp1: {dp1}, dp2: {dp2}")
 
                                 # Calculate rpm2 and HP2
                 rpm2 = math.sqrt(dp2 / dp1) * (self.rpm1 ** 2)
@@ -1045,9 +989,6 @@ class MyExtension(omni.ext.IExt):
                                 # Display HP2 and HP per pod in the UI
                 self.hp2_label.text = f"HP2 (kW): {hp2:.2f}"
                 self.hp_per_pod_label.text = f"HP per Pod: {hp_per_pod:.2f}"
-
-                print(f"Calculated HP2: {hp2} kW, HP per Pod: {hp_per_pod} kW")
-
 
         except Exception as e:
             print(f"Error in update_pod_flowrate_and_curve: {e}")
@@ -1087,35 +1028,22 @@ class MyExtension(omni.ext.IExt):
         return math.ceil(air_cooling_capacity_per_pod / crah_model_capacity)
 
 
-    def calculate_chilled_water_temperature_rise(self, model):
+    def calculate_chilled_water_temperature_rise(self, fws_design_temperature_air):
         """Calculate chilled water temperature rise based on conditions."""
         try:
-            # selected_city = selected_city.strip()
-            # city_data = self.climate_data[self.climate_data['City'] == selected_city]
-            # Define model and filter for the required model (e.g., 'vertiv_1mw')
             model_filter = "Vertiv 1MW"
-
-        # Access the selected FWS Design Temperature from fws_air_menu
-            children = self.fws_air_menu.model.get_item_children()
-            selected_index = self.fws_air_menu.model.get_item_value_model(None).as_int
-
-            # Get the selected item model and value as a string
-            if 0 <= selected_index < len(children):
-                selected_item_model = self.fws_air_menu.model.get_item_value_model(children[selected_index])
-                self.fws_design_temperature_air = int(selected_item_model.get_value_as_string())
             ta = math.ceil(self.dry_bulb)
 
             # Filter for rows where TWOUT matches fws_design_temperature and TA matches the ceiling of dry_bulb
             target_row = self.chillers_data[
                 (self.chillers_data['Model'] == model_filter) &
-                (self.chillers_data['TWOUT'] == self.fws_design_temperature_air) &
+                (self.chillers_data['TWOUT'] == fws_design_temperature_air) &
                 (self.chillers_data['TA '] == ta)
             ]
 
             if not target_row.empty:
                 # Retrieve the 'evaporator' value for chilled water temperature rise
                 chilled_water_temp_rise = target_row.iloc[0]['Evaporator']
-                print(f"Chilled Water Temperature Rise: {chilled_water_temp_rise} °C")
                 return chilled_water_temp_rise
             else:
                 print("No matching row found in chillers.csv for the specified conditions.")
@@ -1136,7 +1064,6 @@ class MyExtension(omni.ext.IExt):
 
     def calculate_chilled_water_flow_rate_per_crah(self, q_per_crah, chilled_water_temperature_rise):
         """Calculate the chilled water flow rate per CRAH."""
-        print("000000000000000000000000000000000000000000000000000")
         return (q_per_crah / (chilled_water_temperature_rise * self.water_rho_cp)) * 60000
 
     def calculate_chilled_water_flow_rate_per_pod(self, chilled_water_flow_rate_crah, no_of_crahs):
