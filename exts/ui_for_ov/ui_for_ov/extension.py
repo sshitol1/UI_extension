@@ -6,7 +6,9 @@ import math
 
 class MyExtension(omni.ext.IExt):
 
-
+    RPM1_PERCENT = 1  # Base RPM percentage for calculations
+    CFM1 = 29081      # PW170 CFM value
+    HP1_PER_CRAH = 13.5  # PW170 total power in kW
 
     vendor_data = [
     {
@@ -361,8 +363,8 @@ class MyExtension(omni.ext.IExt):
                                 self.num_cdus_menu.model.get_item_value_model().add_value_changed_fn(lambda model: self.update_pod_flowrate_and_curve())
                             with ui.VStack():
                                 self.pod_flowrate_cdu_label = ui.Label("POD Flow Rate per CDU: N/A LPM", style=self.STYLES["highlight_label"])
-                                self.hp2_label = ui.Label("HP2 (kW): N/A", style=self.STYLES["highlight_label"])
-                                self.hp_per_pod_label = ui.Label("HP per Pod: N/A", style=self.STYLES["highlight_label"])
+                                self.cdu_hp2_label = ui.Label("HP2 (kW): N/A", style=self.STYLES["highlight_label"])
+                                self.cdu_hp_per_pod_label = ui.Label("HP per Pod: N/A", style=self.STYLES["highlight_label"])
                                 self.air_temperature_rise_label = ui.Label("Air Temperature Rise in Rack: Calculating...", style=self.STYLES["highlight_label"])
                                 self.air_return_temperature_label = ui.Label("Air Return Temperature: Calculating...", style=self.STYLES["highlight_label"])
                                 self.q_per_crah_label = ui.Label("Q per CRAH: Calculating...", style=self.STYLES["highlight_label"])
@@ -371,6 +373,9 @@ class MyExtension(omni.ext.IExt):
                                 self.q_ac_per_pod_label = ui.Label("Q AC per POD (kW): Calculating...", style=self.STYLES["highlight_label"])
                                 self.liquid_cooling_label1 = ui.Label("Liquid Cooling Option 1: Not Set", style=self.STYLES["value_label"])
                                 self.liquid_cooling_label2 = ui.Label("Liquid Cooling Option 2: Not Set", style=self.STYLES["value_label"])
+                                self.crah_hp1_label = ui.Label("HP1 PER CRAH: N/A", style=self.STYLES["highlight_label"])
+                                self.crah_hp2_label = ui.Label("HP2 per CRAH: N/A", style=self.STYLES["highlight_label"])
+
                             # Initialize calculations based on default settings
                                     # Initial calculation and UI update
                                 self.update_calculations()
@@ -864,6 +869,8 @@ class MyExtension(omni.ext.IExt):
 
             q_ac_per_pod = self.calculate_q_ac_per_pod(current_cdu_type, air_cooling_capacity_per_pod, total_power_per_pod, num_pods)
             self.q_ac_per_pod_label.text = f"Q AC per POD (kW): {q_ac_per_pod:.2f}"
+
+            self.calculate_crah_rpm_and_power(required_air_flow_rate_capacity_per_pod,no_of_crahs)
         except Exception as e:
             print(f"Error in update_calculations: {e}")
 
@@ -884,15 +891,23 @@ class MyExtension(omni.ext.IExt):
 
             # Retrieve rack counts for the selected pod type
             selected_pod_type, rack_counts = self.get_selected_pod_info()
+            print("Air_flow_rate_per_rack",air_flow_rate_per_rack_gb200)
+            print("No of racks", rack_counts.get("GB200_NVL72", 0))
+            no_of_racks_gb200 = rack_counts.get("GB200_NVL72", 0)
+            no_of_racks_management = rack_counts.get("Management",0)
+            no_of_racks_networking = rack_counts.get("Networking", 0)
+            GB200_flow_rate = air_flow_rate_per_rack_gb200 * no_of_racks_gb200
+            Management_rack_flow_rate = self.AIR_FLOW_RATE_MANAGEMENT_RACK * no_of_racks_management
+            Networking_rack_flow_rate = self.AIR_FLOW_RATE_NETWORK_RACK * no_of_racks_networking
 
             # Calculate the total required airflow rate per pod
             required_airflow_rate_per_pod = (
-                air_flow_rate_per_rack_gb200 * rack_counts.get("GB200_NVL72", 0) +
-                self.AIR_FLOW_RATE_MANAGEMENT_RACK * rack_counts.get("Management", 0) +
-                self.AIR_FLOW_RATE_NETWORK_RACK * rack_counts.get("Networking", 0)
+                GB200_flow_rate +
+                Management_rack_flow_rate +
+                Networking_rack_flow_rate
             )
 
-            return required_airflow_rate_per_pod
+            return (required_airflow_rate_per_pod * 1.05)
         except Exception as e:
             print(f"Error calculating airflow rate per pod: {str(e)}")
             return None
@@ -987,8 +1002,8 @@ class MyExtension(omni.ext.IExt):
                 hp_per_pod = hp2 * total_cdus
 
                                 # Display HP2 and HP per pod in the UI
-                self.hp2_label.text = f"HP2 (kW): {hp2:.2f}"
-                self.hp_per_pod_label.text = f"HP per Pod: {hp_per_pod:.2f}"
+                self.cdu_hp2_label.text = f"HP2 (kW): {hp2:.2f}"
+                self.cdu_hp_per_pod_label.text = f"HP per Pod: {hp_per_pod:.2f}"
 
         except Exception as e:
             print(f"Error in update_pod_flowrate_and_curve: {e}")
@@ -1071,12 +1086,36 @@ class MyExtension(omni.ext.IExt):
         return chilled_water_flow_rate_crah * no_of_crahs
 
     def calculate_q_ac_per_pod(self, cdu_type, air_cooling_capacity_per_pod, total_power_per_pod, no_of_pods):
+
         """Calculate Q AC per POD based on CDU type."""
         if cdu_type == "Liquid to Liquid":
             return air_cooling_capacity_per_pod
         elif cdu_type == "Liquid to Air":
             return total_power_per_pod
         return 0  # Return a default value if CDU type is unrecognized
+
+    def calculate_crah_rpm_and_power(self,required_airflow_rate_capacity_per_pod, no_of_crahs):
+        try:
+            # Calculate CFM2
+            CFM2 = required_airflow_rate_capacity_per_pod / no_of_crahs
+            print(f"Calculated CFM2: {CFM2} CFM")
+
+            # Calculate RPM2% using the defined RPM1_PERCENT constant
+            RPM2_percent = (CFM2 / self.CFM1) * self.RPM1_PERCENT
+            print(f"Calculated RPM2%: {RPM2_percent}")
+            HP1_per_CRAH = self.HP1_PER_CRAH
+
+            # Calculate HP2_per_crah using the constants
+            HP2_per_crah = ((RPM2_percent / self.RPM1_PERCENT) ** 3) * self.HP1_PER_CRAH
+            print(f"Calculated HP2_per_crah: {HP2_per_crah} kW")
+
+            # Display the results in the UI if labels are set up for them
+            self.crah_hp2_label.text = f"HP2 per CRAH: {HP2_per_crah:.2f} kW"
+            self.crah_hp1_label.text = f"HP1 per CRAH: {HP1_per_CRAH:.2f}%"
+
+        except Exception as e:
+
+            print(f"Error calculating CRAH RPM and power: {e}")
 
     def _clear_labels(self):
         self.country_label.text = "Country: N/A"
@@ -1092,3 +1131,12 @@ class MyExtension(omni.ext.IExt):
         # air_flow_rate_per_rack(Management rack) = 3900
         # air_flow_rate_per_rack(Network rack) = 3900
         # required airflow rate/pod = [(air_flow_rate_per_rack(GB200_NVL 72) *no.of racks(GB200_NVL 72)) + air_flow_rate_per_rack(Management rack) * no.of racks(Management Rack) + air_flow_rate_per_rack(Network rack) * no.of racks(Network Rack)
+
+        # RPM1% = 1
+        # RPM2% = (CFM2/CFM1) * RPM1
+
+        # CFM2= Required_airflow_rate_per_pod/ no of crahs per pod
+        # CFM1 = PW170 CFM value = 29081
+
+        # HP1_per_crah = PW170 Total power = 13.5 kW
+        # HP2_per_crah = ((RPM2%/RPM!%)^3)* HP1_per_crah
